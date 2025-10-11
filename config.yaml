@@ -8,7 +8,7 @@ interval: 10
 base_url: "https://websim.com"
 
 #Model ID, a free model is recommended
-model_id: "gemini-flash"
+model_id: "gpt-5-mini"
 
 #Additional Notes, Usually for safety
 additional_note: "Don't spread the cheese touch"
@@ -27,3 +27,12 @@ auto_response_require_likes: "You need to like this project to be able to make a
 
 #Optional, Require likes toggle, defaults to no
 require_like_project: no
+
+#Optional, Rquire top toggle, defaults to no
+require_tip_credit: no
+
+#Minimum tipped credit needed on the comment
+minimum_tip_amount: 0
+
+#Automatic Response When the comment author didn't tip the project when it is required. <$MINIMUM_TIP_COUNT> will be replaced with the minimum tip amount.
+auto_response_require_tip: "You need to tip at least <$MINIMUM_TIP_COUNT> credits to create an edit. Create a new comment with a tip of <$MINIMUM_TIP_COUNT> to make an edit. It is not recommended to tip less or more than that amount, as the excess will not be automatically refunded."

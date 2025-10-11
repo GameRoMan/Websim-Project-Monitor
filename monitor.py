@@ -23,18 +23,20 @@ async def check_and_respond(project_id:str,config:dict):
         #Load Config Items
         project_id = config.get('project_id')
         base_url = config.get('base_url', 'http://localhost')
-        model_id = config.get('model_id','gemini-flash')
+        model_id = config.get('model_id','gpt-5-mini')
         additional_note = config.get('additional_note','')
         cookies = config.get('cookies',{})
-        #Logical Switches
+
+        #Additional Items
         require_like_project = config.get('require_like_project',False)
+        require_tip_credit = config.get('require_tip_credit',False)
+        minimum_tip_amount = config.get('minimum_tip_amount',0)
 
         #text to check for and send
-        loc_auto_response_create_revision = config.get('auto_response_prefix') + config.get('auto_response_create_revision')
-        loc_auto_response_require_likes = config.get('auto_response_prefix') + config.get('auto_response_require_likes')
         loc_auto_response_prefix = config.get('auto_response_prefix')
-
-
+        loc_auto_response_create_revision = loc_auto_response_prefix + config.get('auto_response_create_revision')
+        loc_auto_response_require_likes = loc_auto_response_prefix + config.get('auto_response_require_likes')
+        loc_auto_response_require_tip = loc_auto_response_prefix + config.get('auto_response_require_tip').replace("<$MINIMUM_TIP_COUNT>",str(minimum_tip_amount)) 
 
         logger.info(f"[Monitor] Checking project {project_id}")
         headers = {'Content-Type': 'application/json'}
@@ -71,6 +73,7 @@ async def check_and_respond(project_id:str,config:dict):
 
             # Step 2: Fetch comments
             url_comments = f"{base_url}/api/v1/projects/{project_id}/comments"
+            tipped_amount = -1 #Default for no tip
 
             async with session.get(url_comments) as resp:
                 resp_json = await resp.json()
@@ -85,9 +88,21 @@ async def check_and_respond(project_id:str,config:dict):
 
                 comm_data = resp_json
 
-                entry = comm_data['comments']['data'][0] if comm_data['comments']['data'] else None
+                entry = {}
 
-                if not entry:
+                if not comm_data['comments']['data']:
+                    logger.info("[Monitor] No comments to process")
+                    return
+
+
+                for comment in comm_data['comments']['data']:
+                    if comment['comment']['pinned']:#Skip pinned comments
+                        continue
+                    else:
+                        entry = comment
+                        break
+                
+                if entry == {}:
                     logger.info("[Monitor] No comments to process")
                     return
 
@@ -95,6 +110,9 @@ async def check_and_respond(project_id:str,config:dict):
                 comment_id = comment['id']
                 raw_content = comment['raw_content']
                 author = comment['author']
+                if comment['card_data'] and comment['card_data']['type'] == "tip_comment":
+                    tipped_amount = comment['card_data']['credits_spent']
+
                 logger.info(f"[Monitor] First comment by {author['username']}: \"{raw_content}\"")
 
             # Step 3: Check replies for existing auto response
@@ -124,6 +142,20 @@ async def check_and_respond(project_id:str,config:dict):
 
             # Step 4: Check if author has liked the project if required
             # Going through the pages is usually not required
+            if require_tip_credit:
+                if not tipped_amount >= minimum_tip_amount:
+                    logger.info("[Monitor] Did not tip or tipped too little. Sending Reminder.")
+                    await session.post(
+                            url_comments,
+                            headers=headers,
+                            json={
+                                'content': loc_auto_response_require_tip,
+                                'parent_comment_id': comment_id
+                            }
+                        )
+                    logger.info("[Monitor] Reminder Sent.")
+                    return
+
             if require_like_project:
                 url_likes = f"{base_url}/api/v1/users/{author['username']}/likes?first=100"
                 async with session.get(url_likes) as resp:
