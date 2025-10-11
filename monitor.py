@@ -175,7 +175,7 @@ async def check_and_respond(project_id:str,config:dict):
 
                     for l in like_data.get('likes',{}).get('data',[{}]):
                         try:
-                            likes_list.append(l.get('project',{}).get('id','No ID'))#Some like items have broken projects
+                            likes_list.append(l.get('project',{}).get('id','No ID')==project_id)#Some like items have broken projects
                         except:
                             continue
 
