@@ -1,3 +1,4 @@
+
 import asyncio
 import logging
 from typing import Optional, Dict
@@ -13,6 +14,74 @@ logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger("monitor")
 
 
+project_id = None
+base_url = None
+model_id = None
+additional_note = None
+cookies = None
+
+#Additional Items
+require_like_project = None
+require_tip_credit = None
+minimum_tip_amount = None
+
+#text to check for and send
+loc_auto_response_prefix = None
+loc_auto_response_create_revision = None
+loc_auto_response_require_likes = None
+loc_auto_response_require_tip = None
+
+
+def load_config_items():
+    global project_id,base_url,model_id,additional_note,cookies,require_like_project,require_tip_credit,minimum_tip_amount
+    global loc_auto_response_prefix,loc_auto_response_create_revision,loc_auto_response_require_likes,loc_auto_response_require_tip
+    #Load Config Items
+    project_id = config.get('project_id')
+    base_url = config.get('base_url', 'http://localhost')
+    model_id = config.get('model_id','gpt-5-mini')
+    additional_note = config.get('additional_note','')
+    cookies = config.get('cookies',{})
+
+    #Additional Items
+    require_like_project = config.get('require_like_project',False)
+    require_tip_credit = config.get('require_tip_credit',False)
+    print(type(require_tip_credit))
+    minimum_tip_amount = config.get('minimum_tip_amount',0)
+
+    #text to check for and send
+    loc_auto_response_prefix = config.get('auto_response_prefix')
+    loc_auto_response_create_revision = loc_auto_response_prefix + config.get('auto_response_create_revision')
+    loc_auto_response_require_likes = loc_auto_response_prefix + config.get('auto_response_require_likes')
+    loc_auto_response_require_tip = loc_auto_response_prefix + config.get('auto_response_require_tip').replace("<$MINIMUM_TIP_COUNT>",str(minimum_tip_amount)) 
+
+
+async def check_comment_has_auto_response(session,owner_id,comment_id):
+    url_replies = f"{base_url}/api/v1/projects/{project_id}/comments/{comment_id}/replies"
+    async with session.get(url_replies) as resp:
+        resp_json = await resp.json()
+
+        if is_jwt_expired(resp_json):
+            await refresh_and_update_cookies(base_url,cookies)
+            return True
+
+        elif resp.status != 200:
+            logger.error(f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}")
+            return True
+
+        rep_data = resp_json
+
+        already_replied = any(
+            r['comment']['author']['id'] == owner_id and
+            loc_auto_response_prefix in r['comment']['raw_content']
+            for r in rep_data['comments']['data']
+        )
+
+        if already_replied:
+            logger.info("[Monitor] Found auto reply headers. Skipping.")
+            return True
+    return False
+
+
 async def refresh_and_update_cookies(url,cookies):
     new_cookies = await refresh_cookies(url, cookies)
     if new_cookies:
@@ -20,26 +89,11 @@ async def refresh_and_update_cookies(url,cookies):
 
 async def check_and_respond(project_id:str,config:dict):
     try:
-        #Load Config Items
-        project_id = config.get('project_id')
-        base_url = config.get('base_url', 'http://localhost')
-        model_id = config.get('model_id','gpt-5-mini')
-        additional_note = config.get('additional_note','')
-        cookies = config.get('cookies',{})
+        load_config_items()
 
-        #Additional Items
-        require_like_project = config.get('require_like_project',False)
-        require_tip_credit = config.get('require_tip_credit',False)
-        minimum_tip_amount = config.get('minimum_tip_amount',0)
-
-        #text to check for and send
-        loc_auto_response_prefix = config.get('auto_response_prefix')
-        loc_auto_response_create_revision = loc_auto_response_prefix + config.get('auto_response_create_revision')
-        loc_auto_response_require_likes = loc_auto_response_prefix + config.get('auto_response_require_likes')
-        loc_auto_response_require_tip = loc_auto_response_prefix + config.get('auto_response_require_tip').replace("<$MINIMUM_TIP_COUNT>",str(minimum_tip_amount)) 
+        headers = {'Content-Type': 'application/json'}
 
         logger.info(f"[Monitor] Checking project {project_id}")
-        headers = {'Content-Type': 'application/json'}
 
         async with aiohttp.ClientSession(cookies=cookies) as session:
             # Step 1: Fetch latest revisions
@@ -47,7 +101,7 @@ async def check_and_respond(project_id:str,config:dict):
             async with session.get(url_revisions) as resp:
                 resp_json = await resp.json()
 
-                if resp.status == 401 and is_jwt_expired(resp_json):
+                if is_jwt_expired(resp_json):
                     await refresh_and_update_cookies(base_url,cookies)
                     return  
 
@@ -78,7 +132,7 @@ async def check_and_respond(project_id:str,config:dict):
             async with session.get(url_comments) as resp:
                 resp_json = await resp.json()
 
-                if resp.status == 401 and is_jwt_expired(resp_json):
+                if is_jwt_expired(resp_json):
                     await refresh_and_update_cookies(base_url,cookies)
                     return  
 
@@ -96,11 +150,15 @@ async def check_and_respond(project_id:str,config:dict):
 
 
                 for comment in comm_data['comments']['data']:
+                    
                     if comment['comment']['pinned']:#Skip pinned comments
                         continue
+                    elif await check_comment_has_auto_response(session,owner_id,comment['comment']['id']):#last comment before replied
+                        break
                     else:
                         entry = comment
-                        break
+
+                    
                 
                 if entry == {}:
                     logger.info("[Monitor] No comments to process")
@@ -120,7 +178,7 @@ async def check_and_respond(project_id:str,config:dict):
             async with session.get(url_replies) as resp:
                 resp_json = await resp.json()
 
-                if resp.status == 401 and is_jwt_expired(resp_json):
+                if is_jwt_expired(resp_json):
                     await refresh_and_update_cookies(base_url,cookies)
                     return  
 
@@ -161,7 +219,7 @@ async def check_and_respond(project_id:str,config:dict):
                 async with session.get(url_likes) as resp:
                     resp_json = await resp.json()
 
-                    if resp.status == 401 and is_jwt_expired(resp_json):
+                    if is_jwt_expired(resp_json):
                         await refresh_and_update_cookies(base_url,cookies)
                         return  
 
@@ -224,6 +282,7 @@ async def check_and_respond(project_id:str,config:dict):
 
 def monitor_project(config: dict, *, interval_sec: int = 10, **kwargs):
     project_id = config.get('project_id')
+    load_config_items()
     async def runner():
         while True:
             await check_and_respond(project_id, config)
