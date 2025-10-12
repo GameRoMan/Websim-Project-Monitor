@@ -60,4 +60,8 @@ def is_jwt_expired(resp_json: dict) -> bool:
         isinstance(resp_json, dict)
         and resp_json.get("error", {}).get("name","") == "ResponseError"
         and resp_json["error"].get("cause",{}).get("message","") == "JWT expired"
+    ) or (
+        isinstance(resp_json, dict)
+        and resp_json.get("error", {}).get("name","") == "ResponseError"
+        and "JWTExpired" in resp_json["error"].get("message","")
     )
