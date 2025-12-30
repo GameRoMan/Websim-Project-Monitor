@@ -1,17 +1,17 @@
 import logging
-from typing import Dict, Optional
 import aiohttp
 from http.cookies import SimpleCookie
-import yaml
-import os
 
-from config_manager import load_config,update_config
+from .config_manager import load_config, update_config
 
 logger = logging.getLogger("cookie_manager")
 
 CONFIG_PATH = "config.yaml"
 
-async def refresh_cookies(base_url: str, current_cookies: Dict[str, str]) -> Optional[Dict[str, str]]:
+
+async def refresh_cookies(
+    base_url: str, current_cookies: dict[str, str]
+) -> dict[str, str] | None:
     """
     Makes a GET request to base_url and refreshes cookies if the server returns Set-Cookie headers.
     Updates both in-memory cookies and config.yaml.
@@ -21,12 +21,16 @@ async def refresh_cookies(base_url: str, current_cookies: Dict[str, str]) -> Opt
         async with aiohttp.ClientSession() as session:
             async with session.get(base_url, cookies=current_cookies) as resp:
                 if resp.status != 200:
-                    logger.error(f"[CookieManager] Failed to refresh cookies: status {resp.status}")
+                    logger.error(
+                        f"[CookieManager] Failed to refresh cookies: status {resp.status}"
+                    )
                     return None
 
                 set_cookie_headers = resp.headers.getall("Set-Cookie", [])
                 if not set_cookie_headers:
-                    logger.warning("[CookieManager] No Set-Cookie headers found in response.")
+                    logger.warning(
+                        "[CookieManager] No Set-Cookie headers found in response."
+                    )
                     return None
 
                 new_cookies = {}
@@ -45,23 +49,25 @@ async def refresh_cookies(base_url: str, current_cookies: Dict[str, str]) -> Opt
         logger.error(f"[CookieManager] Error refreshing cookies: {e}")
         return None
 
-def save_cookies_to_config(new_cookies: Dict[str, str]):
+
+def save_cookies_to_config(new_cookies: dict[str, str]):
     try:
         config = load_config()
         cookie_string = "; ".join(f"{k}={v}" for k, v in new_cookies.items())
-        config['cookies'] = cookie_string
+        config["cookies"] = cookie_string
         update_config(config)
         logger.info("[CookieManager] Updated cookies in config.yaml")
     except Exception as e:
         logger.error(f"[CookieManager] Failed to update config.yaml: {e}")
 
+
 def is_jwt_expired(resp_json: dict) -> bool:
     return (
         isinstance(resp_json, dict)
-        and resp_json.get("error", {}).get("name","") == "ResponseError"
-        and resp_json["error"].get("cause",{}).get("message","") == "JWT expired"
+        and resp_json.get("error", {}).get("name", "") == "ResponseError"
+        and resp_json["error"].get("cause", {}).get("message", "") == "JWT expired"
     ) or (
         isinstance(resp_json, dict)
-        and resp_json.get("error", {}).get("name","") == "ResponseError"
-        and "JWTExpired" in resp_json["error"].get("message","")
+        and resp_json.get("error", {}).get("name", "") == "ResponseError"
+        and "JWTExpired" in resp_json["error"].get("message", "")
     )
