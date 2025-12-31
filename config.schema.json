@@ -31,9 +31,9 @@
           "type": "string",
           "description": "Additional notes, usually for safety"
         },
-        "cookies": {
+        "cookie": {
           "type": "string",
-          "description": "Cookies, paste from browser with document.cookies, required to work"
+          "description": "Cookies, paste from browser with document.cookie, required to work"
         },
         "auto_response_prefix": {
           "type": "string",
@@ -71,7 +71,7 @@
         "auto_response_require_likes",
         "auto_response_require_tip",
         "base_url",
-        "cookies",
+        "cookie",
         "interval",
         "minimum_tip_amount",
         "model_id",

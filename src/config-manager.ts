@@ -2,17 +2,13 @@ import * as path from "node:path";
 
 import type config from "#config";
 
-type Config = typeof config;
+export type Config = typeof config;
 
 const CONFIG_PATH = path.join(process.cwd(), "config.json");
 
-export async function loadConfig(): Promise<{
-  readonly config: Config;
-  readonly cookies: Bun.CookieMap;
-}> {
+export async function loadConfig(): Promise<Config> {
   const config: Config = await Bun.file(CONFIG_PATH).json();
-  const cookies = new Bun.CookieMap(config.cookies);
-  return { config, cookies } as const;
+  return config;
 }
 
 export async function updateConfig(config: Config): Promise<void> {

@@ -1,7 +1,7 @@
 {
   "$schema": "./config.schema.json",
 
-  "project_id": "<Configure your project ID and cookies in config.yaml>",
+  "project_id": "<Configure your project ID and cookies in config.json>",
 
   "interval": 10,
 
@@ -11,7 +11,7 @@
 
   "additional_note": "Don't spread the cheese touch",
 
-  "cookies": "sb-hello-auth-token.1=114514; sb-hello-auth-token.0=base64-ABCDEF1919810",
+  "cookie": "sb-hello-auth-token.1=114514; sb-hello-auth-token.0=base64-ABCDEF1919810",
 
   "auto_response_prefix": "[AUTOMATIC RESPONSE] ",
 
