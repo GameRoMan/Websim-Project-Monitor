@@ -12,7 +12,7 @@ export async function refreshCookies(
   // current_cookies: dict[str, str]
 ): Promise<Record<string, string> | void> {
   try {
-    console.info("[CookieManager] Attempting to refresh cookies from base URL...")
+    console.info("[CookieManager] Attempting to refresh cookies from base URL...");
     // async with aiohttp.ClientSession() as session:
     //     async with session.get(base_url, cookies=current_cookies) as resp:
     //         if resp.status != 200:
