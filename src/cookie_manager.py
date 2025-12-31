@@ -6,8 +6,6 @@ from .config_manager import load_config, update_config
 
 logger = logging.getLogger("cookie_manager")
 
-CONFIG_PATH = "config.yaml"
-
 
 async def refresh_cookies(
     base_url: str, current_cookies: dict[str, str]

@@ -1,0 +1,83 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$ref": "#/definitions/Config",
+  "definitions": {
+    "Config": {
+      "type": "object",
+      "additionalProperties": false,
+      "properties": {
+        "$schema": {
+          "type": "string",
+          "const": "./config.schema.json"
+        },
+        "project_id": {
+          "type": "string",
+          "description": "Project ID to monitor, required"
+        },
+        "interval": {
+          "type": "integer",
+          "description": "Interval, recommended ~10s"
+        },
+        "base_url": {
+          "type": "string",
+          "format": "uri",
+          "description": "Base URL for websim, required if you don't want to have requests sent to localhost"
+        },
+        "model_id": {
+          "type": "string",
+          "description": "Model ID, a free model is recommended"
+        },
+        "additional_note": {
+          "type": "string",
+          "description": "Additional notes, usually for safety"
+        },
+        "cookies": {
+          "type": "string",
+          "description": "Cookies, paste from browser with document.cookies, required to work"
+        },
+        "auto_response_prefix": {
+          "type": "string",
+          "description": "Automatic Reponse prefix is checked for if a comment requires processing."
+        },
+        "auto_response_create_revision": {
+          "type": "string",
+          "description": "Automatic response when a revision is created, auto_response_prefix is automatically prepended."
+        },
+        "auto_response_require_likes": {
+          "type": "string",
+          "description": "Automatic response when the comment author didn't like the project when it is required"
+        },
+        "require_like_project": {
+          "type": "boolean",
+          "description": "Optional, require likes toggle, defaults to false"
+        },
+        "require_tip_credit": {
+          "type": "boolean",
+          "description": "Optional, require tip toggle, defaults to false"
+        },
+        "minimum_tip_amount": {
+          "type": "integer",
+          "description": "Minimum tipped credit needed on the comment"
+        },
+        "auto_response_require_tip": {
+          "type": "string",
+          "description": "Automatic Response When the comment author didn't tip the project when it is required. <$MINIMUM_TIP_COUNT> will be replaced with the minimum tip amount."
+        }
+      },
+      "required": [
+        "additional_note",
+        "auto_response_create_revision",
+        "auto_response_prefix",
+        "auto_response_require_likes",
+        "auto_response_require_tip",
+        "base_url",
+        "cookies",
+        "interval",
+        "minimum_tip_amount",
+        "model_id",
+        "project_id"
+      ],
+      "title": "Config"
+    }
+  }
+}

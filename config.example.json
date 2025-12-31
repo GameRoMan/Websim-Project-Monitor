@@ -1,0 +1,29 @@
+{
+  "$schema": "./config.schema.json",
+
+  "project_id": "<Configure your project ID and cookies in config.yaml>",
+
+  "interval": 10,
+
+  "base_url": "https://websim.com",
+
+  "model_id": "gpt-5-mini",
+
+  "additional_note": "Don't spread the cheese touch",
+
+  "cookies": "sb-hello-auth-token.1=114514; sb-hello-auth-token.0=base64-ABCDEF1919810",
+
+  "auto_response_prefix": "[AUTOMATIC RESPONSE] ",
+
+  "auto_response_create_revision": "Revision Created.",
+
+  "auto_response_require_likes": "You need to like this project to be able to make an edit.",
+
+  "require_like_project": false,
+
+  "require_tip_credit": false,
+
+  "minimum_tip_amount": 0,
+
+  "auto_response_require_tip": "You need to tip at least <$MINIMUM_TIP_COUNT> credits to create an edit. Create a new comment with a tip of <$MINIMUM_TIP_COUNT> to make an edit. It is not recommended to tip less or more than that amount, as the excess will not be automatically refunded."
+}

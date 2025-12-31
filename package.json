@@ -1,0 +1,16 @@
+{
+  "name": "websim-project-monitor",
+  "private": true,
+  "type": "module",
+  "imports": {
+    "#config": "./config.json"
+  },
+  "scripts": {
+    "format": "bunx oxfmt --list-different || bunx oxfmt"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@types/bun": "^1.3.5",
+    "oxfmt": "^0.21.0"
+  }
+}
