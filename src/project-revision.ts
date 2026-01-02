@@ -52,7 +52,7 @@ export async function processProjectRevision(
   //     console.info(f"Created revision ID: {rev_id}, Version: {rev_version}")
 
   // # 3) Create draft site
-  // site_id = generate_site_id()
+  // site_id = generateSiteId()
   // console.info(f"Generated site ID: {site_id}")
   // url_site = f"{base_url}/api/v1/sites"
   // # Extra Step: Enable optional features
@@ -91,6 +91,7 @@ export async function processProjectRevision(
   //     "project_revision_id": rev_id,
   //     "site_id": site_id,
   // }
+
   // async with session.post(url_site, headers=headers, json=payload_site) as resp:
   //     if resp.status != 201:
   //         body = await resp.text()
