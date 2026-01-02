@@ -47,7 +47,10 @@ async function saveCookieToConfig(new_cookie: string): Promise<void> {
   }
 }
 
-export function is_jwt_expired(resp_json): boolean {
+export function is_jwt_expired(resp_json: unknown): boolean {
+  if (!resp_json) return false;
+  if (!(typeof resp_json === "object")) return false;
+
   // return (
   //     resp_json.get("error", {}).get("name", "") == "ResponseError"
   //     and resp_json["error"].get("cause", {}).get("message", "") == "JWT expired"
