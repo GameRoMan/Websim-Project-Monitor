@@ -120,11 +120,12 @@ async function createDraftSite({
     body: JSON.stringify(payload),
   });
 
-  // if resp.status != 201:
-  //     body = await resp.text()
-  //     msg = f"Failed to create site: {resp.status}, Response: {body}"
-  //     console.error(msg)
-  //     raise ProjectRevisionError(msg)
+  if (resp.status !== 201) {
+    const body = await resp.text();
+    const msg = `Failed to create site: ${resp.status}, Response: ${body}`;
+    console.error(msg);
+    throw new ProjectRevisionError(msg);
+  }
 
   console.info("Created draft site successfully");
   return { site_id };
@@ -168,14 +169,14 @@ async function updateProjectCurrentVersion(
     body: JSON.stringify(payload),
   });
 
-  //     if resp.status != 200:
-  //         body = await resp.text()
-  //         msg = (
-  //             f"Failed to update current version: {resp.status}, Response: {body}"
-  //         )
-  //         console.error(msg)
-  //         raise ProjectRevisionError(msg)
-  //     console.info(f"Updated project current version to: {revision_version}")
+  if (resp.status !== 200) {
+    const body = await resp.text();
+    const msg = `Failed to update current version: ${resp.status}, Response: ${body}`;
+    console.error(msg);
+    throw new ProjectRevisionError(msg);
+  }
+
+  console.info(`Updated project current version to: ${revision_version}`);
 }
 
 export async function processProjectRevision(
