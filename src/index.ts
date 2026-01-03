@@ -1,12 +1,10 @@
 import { processProjectRevision } from "./project-revision";
 
-import { refreshCookies, is_jwt_expired, cookie } from "./cookie-manager";
+import { is_jwt_expired, cookie } from "./cookie-manager";
 
 import type { ProjectsRevisionsData, ProjectsCommentsData, WebsimComment } from "websim";
 
 import config from "#config";
-
-const globalHeaders = { cookie: config.cookie };
 
 // # text to check for and send
 // auto_response_prefix = config.get("auto_response_prefix")
@@ -14,16 +12,8 @@ const globalHeaders = { cookie: config.cookie };
 //     "auto_response_create_revision"
 // )
 
-async function refresh_and_update_cookies() {
-  const new_cookies = await refreshCookies(config.base_url, globalHeaders.cookie);
-  if (new_cookies) {
-    globalHeaders.cookie = new_cookies;
-  }
-}
-
 function getHeaders() {
-  const cookie = globalHeaders.cookie;
-  const headers = { "Content-Type": "application/json", cookie } as const;
+  const headers = { "Content-Type": "application/json", cookie: cookie.get() } as const;
   return headers;
 }
 
@@ -65,7 +55,7 @@ async function fetchLatestRevisions(project_id: string) {
   const resp_json: unknown = await resp.json();
 
   if (is_jwt_expired(resp_json)) {
-    await refresh_and_update_cookies();
+    await cookie.refresh();
     return;
   }
 
@@ -103,7 +93,7 @@ async function fetchComments(project_id: string) {
   const resp_json: unknown = await resp.json();
 
   if (is_jwt_expired(resp_json)) {
-    await refresh_and_update_cookies();
+    await cookie.refresh();
     return;
   }
 
@@ -159,7 +149,7 @@ async function checkRepliesForExistingAutoResponse(
   const resp = await fetch(url_replies, { headers: getHeaders() });
   const resp_json: unknown = await resp.json();
   if (is_jwt_expired(resp_json)) {
-    await refresh_and_update_cookies();
+    await cookie.refresh();
     return;
   }
 
@@ -207,7 +197,7 @@ async function checkAndRespond(project_id: string) {
       project_id,
       "prompt", // raw_content + config.additional_note,
       config.model_id,
-      globalHeaders.cookie,
+      cookie.get(),
     );
 
     console.info(
