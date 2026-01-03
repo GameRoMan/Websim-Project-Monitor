@@ -11,36 +11,6 @@ function getHeaders() {
   return headers;
 }
 
-// async function check_comment_has_auto_response(owner_id, comment_id):
-//     url_replies = (
-//         f"{base_url}/api/v1/projects/{project_id}/comments/{comment_id}/replies"
-//     )
-//     async with session.get(url_replies) as resp:
-//         resp_json = await resp.json()
-
-//         if is_jwt_expired(resp_json):
-//             await refresh_and_update_cookies(base_url, cookies)
-//             return True
-
-//         elif resp.status != 200:
-//             console.error(
-//                 f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}"
-//             )
-//             return True
-
-//         rep_data = resp_json
-
-//         already_replied = any(
-//             r["comment"]["author"]["id"] == owner_id
-//             and config.auto_response_prefix in r["comment"]["raw_content"]
-//             for r in rep_data["comments"]["data"]
-//         )
-
-//         if already_replied:
-//             console.info("[Monitor] Found auto reply headers. Skipping.")
-//             return True
-//     return False
-
 async function fetchLatestRevisions(project_id: string) {
   const headers = getHeaders();
   const url_revisions = `${config.base_url}/api/v1/projects/${project_id}/revisions` as const;
@@ -78,7 +48,40 @@ async function fetchLatestRevisions(project_id: string) {
   return { owner_id };
 }
 
-async function fetchComments(project_id: string) {
+async function checkCommentHasAutoResponse(owner_id: string, comment_id: string) {
+  // url_replies = (
+  //     f"{base_url}/api/v1/projects/{project_id}/comments/{comment_id}/replies"
+  // )
+
+  // async with session.get(url_replies) as resp:
+  //     resp_json = await resp.json()
+
+  //     if is_jwt_expired(resp_json):
+  //         await refresh_and_update_cookies(base_url, cookies)
+  //         return True
+
+  //     elif resp.status != 200:
+  //         console.error(
+  //             f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}"
+  //         )
+  //         return True
+
+  //     rep_data = resp_json
+
+  //     already_replied = any(
+  //         r["comment"]["author"]["id"] == owner_id
+  //         and config.auto_response_prefix in r["comment"]["raw_content"]
+  //         for r in rep_data["comments"]["data"]
+  //     )
+
+  //     if already_replied:
+  //         console.info("[Monitor] Found auto reply headers. Skipping.")
+  //         return True
+
+  return false;
+}
+
+async function fetchComments(project_id: string, { owner_id }: { owner_id: string }) {
   const headers = getHeaders();
   const url_comments = `${config.base_url}/api/v1/projects/${project_id}/comments`;
   const resp = await fetch(url_comments, { headers });
@@ -111,9 +114,9 @@ async function fetchComments(project_id: string) {
     if (c.pinned) continue;
 
     // last comment before replied
-    // if (await check_comment_has_auto_response(owner_id, comment.id)) {
-    //    break
-    // }
+    if (await checkCommentHasAutoResponse(owner_id, c.id)) {
+      break;
+    }
 
     comment = c;
   }
@@ -175,7 +178,7 @@ async function checkAndRespond(project_id: string) {
     const { owner_id } = latestRevisions;
 
     // Step 2: Fetch comments
-    const comments = await fetchComments(project_id);
+    const comments = await fetchComments(project_id, { owner_id });
     if (!comments) return;
     const { comment_id, raw_content } = comments;
 
