@@ -15,7 +15,7 @@ class ProjectRevisionError extends Error {
 
 async function createDraftSite() {
   const site_id = generateSiteId();
-  // console.info(f"Generated site ID: {site_id}")
+  console.info(`Generated site ID: ${site_id}`);
   // url_site = f"{base_url}/api/v1/sites"
   // # Extra Step: Enable optional features
   // enableMultiplayer = "multiplayer" in prompt.lower()

@@ -2,6 +2,8 @@ import { processProjectRevision } from "./project-revision";
 
 import { refreshCookies, is_jwt_expired } from "./cookie-manager";
 
+import type { ProjectsRevisionsData, ProjectsCommentsData } from "websim";
+
 import config from "#config";
 
 // model_id = None
@@ -17,14 +19,18 @@ const globalHeaders = { cookie: config.cookie };
 // # text to check for and send
 // loc_auto_response_prefix = None
 // loc_auto_response_create_revision = None
-// loc_auto_response_require_likes = None
-// loc_auto_response_require_tip = None
 
-async function refresh_and_update_cookies(url: string, cookies: string) {
-  const new_cookies = await refreshCookies(url, cookies);
+async function refresh_and_update_cookies() {
+  const new_cookies = await refreshCookies(config.base_url, globalHeaders.cookie);
   if (new_cookies) {
     globalHeaders.cookie = new_cookies;
   }
+}
+
+function getHeaders() {
+  const cookie = globalHeaders.cookie;
+  const headers = { "Content-Type": "application/json", cookie } as const;
+  return headers;
 }
 
 // function load_config_items():
@@ -37,8 +43,7 @@ async function refresh_and_update_cookies(url: string, cookies: string) {
 //     global \
 //         loc_auto_response_prefix, \
 //         loc_auto_response_create_revision, \
-//         loc_auto_response_require_likes, \
-//         loc_auto_response_require_tip
+
 //     # Load Config Items
 //     model_id = config.get("model_id", "gpt-5-mini")
 //     additional_note = config.get("additional_note", "")
@@ -54,12 +59,6 @@ async function refresh_and_update_cookies(url: string, cookies: string) {
 //     loc_auto_response_create_revision = loc_auto_response_prefix + config.get(
 //         "auto_response_create_revision"
 //     )
-//     loc_auto_response_require_likes = loc_auto_response_prefix + config.get(
-//         "auto_response_require_likes"
-//     )
-//     loc_auto_response_require_tip = loc_auto_response_prefix + config.get(
-//         "auto_response_require_tip"
-//     ).replace("<$MINIMUM_TIP_COUNT>", str(minimum_tip_amount))
 
 // async function check_comment_has_auto_response(session, owner_id, comment_id):
 //     url_replies = (
@@ -92,94 +91,97 @@ async function refresh_and_update_cookies(url: string, cookies: string) {
 //     return False
 
 async function fetchLatestRevisions(project_id: string) {
-  const cookie = globalHeaders.cookie;
-
-  const headers = { "Content-Type": "application/json", cookie } as const;
-
+  const headers = getHeaders();
   const url_revisions = `${config.base_url}/api/v1/projects/${project_id}/revisions` as const;
   const resp = await fetch(url_revisions, { headers });
 
-  // resp_json = await resp.json()
+  const resp_json: unknown = await resp.json();
 
-  // if is_jwt_expired(resp_json):
-  //     await refresh_and_update_cookies(base_url, cookies)
-  //     return
+  if (is_jwt_expired(resp_json)) {
+    await refresh_and_update_cookies();
+    return;
+  }
 
-  // elif resp.status != 200:
-  //     console.error(
-  //         f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}"
-  //     )
-  //     return
+  if (resp.status !== 200) {
+    console.error(`Fetch revisions failed: ${resp.status}, Body: ${await resp.text()}`);
+    return;
+  }
 
-  // rev_data = resp_json
+  const rev_data = resp_json as ProjectsRevisionsData;
 
-  // first = (
-  //     rev_data["revisions"]["data"][0]
-  //     if rev_data["revisions"]["data"]
-  //     else None
-  // )
+  const first = rev_data.revisions.data[0];
 
-  // if not first:
-  //     console.info("[Monitor] No revisions found")
-  //     return
+  if (!first) {
+    console.info("[Monitor] No revisions found");
+    return;
+  }
 
-  // console.info(f"[Monitor] site.state = {first['site']['state']}")
+  console.info(`[Monitor] site.state = ${first.site.state}`);
 
-  // if first["site"]["state"] != "done":
-  //     console.info("[Monitor] Site not yet ready. Skipping execution.")
-  //     return
+  if (first.site.state !== "done") {
+    console.info("[Monitor] Site not yet ready. Skipping execution.");
+    return;
+  }
 
-  // owner_id = first["project_revision"]["created_by"]["id"]
+  const owner_id = first.project_revision.created_by.id;
 }
 
 async function fetchComments(project_id: string) {
+  const headers = getHeaders();
   const url_comments = `${config.base_url}/api/v1/projects/${project_id}/comments`;
+  const resp = await fetch(url_comments, { headers });
+
   // tipped_amount = -1  # Default for no tip
-  // async with session.get(url_comments) as resp:
-  //     resp_json = await resp.json()
-  //     if is_jwt_expired(resp_json):
-  //         await refresh_and_update_cookies(base_url, cookies)
-  //         return
-  //     elif resp.status != 200:
-  //         console.error(
-  //             f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}"
-  //         )
-  //         return
-  //     comm_data = resp_json
-  //     entry = {}
-  //     if not comm_data["comments"]["data"]:
-  //         console.info("[Monitor] No comments to process")
-  //         return
-  //     for comment in comm_data["comments"]["data"]:
-  //         if comment["comment"]["pinned"]:  # Skip pinned comments
-  //             continue
-  //         elif await check_comment_has_auto_response(
-  //             session, owner_id, comment["comment"]["id"]
-  //         ):  # last comment before replied
-  //             break
-  //         else:
-  //             entry = comment
-  //     if entry == {}:
-  //         console.info("[Monitor] No comments to process")
-  //         return
-  //     comment = entry["comment"]
-  //     comment_id = comment["id"]
-  //     raw_content = comment["raw_content"]
-  //     author = comment["author"]
-  //     if (
-  //         comment["card_data"]
-  //         and comment["card_data"]["type"] == "tip_comment"
-  //     ):
-  //         tipped_amount = comment["card_data"]["credits_spent"]
-  //     console.info(
-  //         f'[Monitor] First comment by {author["username"]}: "{raw_content}"'
-  //     )
+
+  const resp_json: unknown = await resp.json();
+
+  if (is_jwt_expired(resp_json)) {
+    await refresh_and_update_cookies();
+    return;
+  }
+
+  if (resp.status != 200) {
+    console.error(`Fetch revisions failed: ${resp.status}, Body: ${await resp.text()}`);
+    return;
+  }
+
+  const comm_data: ProjectsCommentsData = resp_json;
+
+  // entry = {}
+  // if not comm_data["comments"]["data"]:
+  //     console.info("[Monitor] No comments to process")
+  //     return
+  // for comment in comm_data["comments"]["data"]:
+  //     if comment["comment"]["pinned"]:  # Skip pinned comments
+  //         continue
+  //     elif await check_comment_has_auto_response(
+  //         session, owner_id, comment["comment"]["id"]
+  //     ):  # last comment before replied
+  //         break
+  //     else:
+  //         entry = comment
+  // if entry == {}:
+  //     console.info("[Monitor] No comments to process")
+  //     return
+  // comment = entry["comment"]
+  // comment_id = comment["id"]
+  // raw_content = comment["raw_content"]
+  // author = comment["author"]
+  // if (
+  //     comment["card_data"]
+  //     and comment["card_data"]["type"] == "tip_comment"
+  // ):
+  //     tipped_amount = comment["card_data"]["credits_spent"]
+  // console.info(
+  //     f'[Monitor] First comment by {author["username"]}: "{raw_content}"'
+  // )
 }
 
-async function checkRepliesForExistingAutoResponse() {
-  // url_replies = (
-  //     f"{base_url}/api/v1/projects/{project_id}/comments/{comment_id}/replies"
-  // )
+async function checkRepliesForExistingAutoResponse(
+  project_id: string,
+  { comment_id }: { comment_id: string },
+) {
+  const url_replies = `${config.base_url}/api/v1/projects/${project_id}/comments/${comment_id}/replies`;
   // async with session.get(url_replies) as resp:
   //     resp_json = await resp.json()
   //     if is_jwt_expired(resp_json):
@@ -206,13 +208,13 @@ async function checkAndRespond(project_id: string) {
     console.info(`[Monitor] Checking project ${project_id}`);
 
     // Step 1: Fetch latest revisions
-    fetchLatestRevisions(project_id);
+    await fetchLatestRevisions(project_id);
 
     // Step 2: Fetch comments
-    fetchComments(project_id);
+    await fetchComments(project_id);
 
     // Step 3: Check replies for existing auto response
-    checkRepliesForExistingAutoResponse();
+    await checkRepliesForExistingAutoResponse(project_id);
 
     // Step 4: Create new revision with safety note
     console.info("[Monitor] Creating new revision...");
