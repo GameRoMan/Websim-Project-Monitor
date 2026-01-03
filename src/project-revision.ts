@@ -1,4 +1,5 @@
 import config from "#config";
+import type { ProjectData } from "websim";
 
 /**
  * Generates a random alphanumeric site ID of given length.
@@ -15,7 +16,13 @@ class ProjectRevisionError extends Error {
   override readonly name = "ProjectRevisionError";
 }
 
-async function fetchCurrentProjectInfo(project_id: string, headers: HeadersInit) {
+async function fetchCurrentProjectInfo({
+  project_id,
+  headers,
+}: {
+  project_id: string;
+  headers: HeadersInit;
+}) {
   const url_proj = `${config.base_url}/api/v1/projects/${project_id}`;
   const resp = await fetch(url_proj, { headers });
 
@@ -26,27 +33,37 @@ async function fetchCurrentProjectInfo(project_id: string, headers: HeadersInit)
     throw new ProjectRevisionError(msg);
   }
 
-  // proj_data = await resp.json()
-  // parent_version = proj_data["project_revision"]["version"]
-  // console.info(f"Current project version: {parent_version}")
+  const proj_data: ProjectData = await resp.json();
+  const parent_version = proj_data.project_revision!.version;
+  console.info(`Current project version: ${parent_version}`);
+  return { parent_version };
 }
 
-async function createNewRevision() {
-  // url_rev = f"{config.base_url}/api/v1/projects/{project_id}/revisions"
-  // payload_rev = {"parent_version": parent_version}
-  // async with session.post(url_rev, headers=headers, json=payload_rev) as resp:
+async function createNewRevision(
+  { project_id, headers }: { project_id: string; headers: HeadersInit },
+  { parent_version }: { parent_version: number },
+) {
+  const url_revisions = `${config.base_url}/api/v1/projects/${project_id}/revisions`;
+  const payload = { parent_version };
+  // async with session.post(url_revisions, headers=headers, json=payload) as resp:
   //     if resp.status != 201:
   //         body = await resp.text()
   //         msg = f"Failed to create revision: {resp.status}, Response: {body}"
   //         console.error(msg)
   //         raise ProjectRevisionError(msg)
   //     rev_data = await resp.json()
-  //     rev_id = rev_data["project_revision"]["id"]
-  //     rev_version = rev_data["project_revision"]["version"]
-  //     console.info(f"Created revision ID: {rev_id}, Version: {rev_version}")
+  //     revision_id = rev_data["project_revision"]["id"]
+  //     revision_version = rev_data["project_revision"]["version"]
+  //     console.info(f"Created revision ID: {revision_id}, Version: {revision_version}")
 }
 
-async function createDraftSite() {
+async function createDraftSite({
+  project_id,
+  headers,
+}: {
+  project_id: string;
+  headers: HeadersInit;
+}) {
   const site_id = generateSiteId();
   console.info(`Generated site ID: ${site_id}`);
   const url_site = `${config.base_url}/api/v1/sites`;
@@ -83,8 +100,8 @@ async function createDraftSite() {
   //         },
   //     },
   //     "project_id": project_id,
-  //     "project_version": rev_version,
-  //     "project_revision_id": rev_id,
+  //     "project_version": revision_version,
+  //     "project_revision_id": revision_id,
   //     "site_id": site_id,
   // }
 
@@ -98,7 +115,7 @@ async function createDraftSite() {
 }
 
 async function confirmDraft() {
-  // url_confirm = f"{config.base_url}/api/v1/projects/{project_id}/revisions/{rev_version}"
+  // url_confirm = f"{config.base_url}/api/v1/projects/{project_id}/revisions/{revision_version}"
   // async with session.patch(
   //     url_confirm, headers=headers, json={"draft": False}
   // ) as resp:
@@ -113,7 +130,7 @@ async function confirmDraft() {
 async function updateProjectCurrentVersion() {
   // url_update = f"{config.base_url}/api/v1/projects/{project_id}"
   // async with session.patch(
-  //     url_update, headers=headers, json={"current_version": rev_version}
+  //     url_update, headers=headers, json={"current_version": revision_version}
   // ) as resp:
   //     if resp.status != 200:
   //         body = await resp.text()
@@ -122,7 +139,7 @@ async function updateProjectCurrentVersion() {
   //         )
   //         console.error(msg)
   //         raise ProjectRevisionError(msg)
-  //     console.info(f"Updated project current version to: {rev_version}")
+  //     console.info(f"Updated project current version to: {revision_version}")
 }
 
 export async function processProjectRevision(
@@ -134,13 +151,13 @@ export async function processProjectRevision(
   const headers = { "Content-Type": "application/json", cookie } as const;
 
   // # 1) Fetch current project info
-  await fetchCurrentProjectInfo(project_id, headers);
+  const { parent_version } = await fetchCurrentProjectInfo({ project_id, headers });
 
   // # 2) Create new revision
-  await createNewRevision();
+  await createNewRevision({ project_id, headers }, { parent_version });
 
   // # 3) Create draft site
-  await createDraftSite();
+  await createDraftSite({ project_id, headers });
 
   // # 4) Confirm draft
   await confirmDraft();
@@ -149,8 +166,8 @@ export async function processProjectRevision(
   await updateProjectCurrentVersion();
 
   // return {
-  //     "revision_id": rev_id,
-  //     "version": rev_version,
+  //     "revision_id": revision_id,
+  //     "version": revision_version,
   //     "site_id": site_id,
   // }
 }
