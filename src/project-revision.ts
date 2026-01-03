@@ -87,7 +87,7 @@ async function createDraftSite(
   // # Construct Final Payload
   const payload = {
     generate: {
-      prompt: { type: "plaintext", text: prompt },
+      prompt: { type: "plaintext", text: prompt, data: null },
       flags: { use_worker_generation: false },
       model: model_id,
       lore: {
@@ -179,7 +179,7 @@ async function updateProjectCurrentVersion(
 export async function processProjectRevision(
   project_id: string,
   prompt: string,
-  model_id: string = "gemini-flash",
+  model_id: string,
 ) {
   const headers = { "Content-Type": "application/json", cookie: cookie.get() } as const;
 

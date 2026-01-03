@@ -16,7 +16,7 @@ async function fetchLatestRevisions(project_id: string) {
   const url_revisions = `${config.base_url}/api/v1/projects/${project_id}/revisions` as const;
   const resp = await fetch(url_revisions, { headers });
 
-  const resp_json: unknown = await resp.json();
+  const resp_json: unknown = await resp.clone().json();
 
   if (is_jwt_expired(resp_json)) {
     await cookie.refresh();

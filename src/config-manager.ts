@@ -12,6 +12,6 @@ export async function loadConfig(): Promise<Config> {
 }
 
 export async function updateConfig(config: Config): Promise<void> {
-  const content = JSON.stringify(config);
+  const content = JSON.stringify(config, null, "\n\n  ");
   await Bun.write(CONFIG_PATH, content);
 }
