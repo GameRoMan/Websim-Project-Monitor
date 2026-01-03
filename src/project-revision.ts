@@ -176,11 +176,7 @@ async function updateProjectCurrentVersion(
   console.info(`Updated project current version to: ${revision_version}`);
 }
 
-export async function processProjectRevision(
-  project_id: string,
-  prompt: string,
-  model_id: string,
-) {
+export async function processProjectRevision(project_id: string, prompt: string, model_id: string) {
   const headers = { "Content-Type": "application/json", cookie: cookie.get() } as const;
 
   // # 1) Fetch current project info

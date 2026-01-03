@@ -48,39 +48,6 @@ async function fetchLatestRevisions(project_id: string) {
   return { owner_id };
 }
 
-async function checkCommentHasAutoResponse(owner_id: string, comment_id: string) {
-  // url_replies = (
-  //     f"{base_url}/api/v1/projects/{project_id}/comments/{comment_id}/replies"
-  // )
-
-  // async with session.get(url_replies) as resp:
-  //     resp_json = await resp.json()
-
-  //     if is_jwt_expired(resp_json):
-  //         await refresh_and_update_cookies(base_url, cookies)
-  //         return True
-
-  //     elif resp.status != 200:
-  //         console.error(
-  //             f"Fetch revisions failed: {resp.status}, Body: {await resp.text()}"
-  //         )
-  //         return True
-
-  //     rep_data = resp_json
-
-  //     already_replied = any(
-  //         r["comment"]["author"]["id"] == owner_id
-  //         and config.auto_response_prefix in r["comment"]["raw_content"]
-  //         for r in rep_data["comments"]["data"]
-  //     )
-
-  //     if already_replied:
-  //         console.info("[Monitor] Found auto reply headers. Skipping.")
-  //         return True
-
-  return false;
-}
-
 async function fetchComments(project_id: string, { owner_id }: { owner_id: string }) {
   const headers = getHeaders();
   const url_comments = `${config.base_url}/api/v1/projects/${project_id}/comments`;
@@ -94,7 +61,7 @@ async function fetchComments(project_id: string, { owner_id }: { owner_id: strin
   }
 
   if (resp.status !== 200) {
-    console.error(`Fetch revisions failed: ${resp.status}, Body: ${await resp.text()}`);
+    console.error(`Fetch comments failed: ${resp.status}, Body: ${await resp.text()}`);
     return;
   }
 
@@ -114,7 +81,7 @@ async function fetchComments(project_id: string, { owner_id }: { owner_id: strin
     if (c.pinned) continue;
 
     // last comment before replied
-    if (await checkCommentHasAutoResponse(owner_id, c.id)) {
+    if (await checkRepliesForExistingAutoResponse(project_id, { comment_id: c.id, owner_id })) {
       break;
     }
 
@@ -144,12 +111,12 @@ async function checkRepliesForExistingAutoResponse(
   const resp_json: unknown = await resp.json();
   if (is_jwt_expired(resp_json)) {
     await cookie.refresh();
-    return;
+    return true;
   }
 
   if (resp.status !== 200) {
     console.error(`Fetch replies failed: ${resp.status}, Body: ${await resp.text()}`);
-    return;
+    return true;
   }
 
   const { comments } = resp_json as ProjectsCommentsData;
@@ -162,10 +129,10 @@ async function checkRepliesForExistingAutoResponse(
 
   if (already_replied) {
     console.info("[Monitor] Found auto reply headers. Skipping.");
-    return;
+    return true;
   }
 
-  return { success: true };
+  return false;
 }
 
 async function checkAndRespond(project_id: string) {
@@ -183,8 +150,9 @@ async function checkAndRespond(project_id: string) {
     const { comment_id, raw_content } = comments;
 
     // Step 3: Check replies for existing auto response
-    const success = await checkRepliesForExistingAutoResponse(project_id, { comment_id, owner_id });
-    if (!success) return;
+    if (await checkRepliesForExistingAutoResponse(project_id, { comment_id, owner_id })) {
+      return;
+    }
 
     // Step 4: Create new revision with safety note
     console.info("[Monitor] Creating new revision...");
