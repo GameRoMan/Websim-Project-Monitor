@@ -1,5 +1,5 @@
 import config from "#config";
-import type { ProjectData } from "websim";
+import type { ProjectData, ProjectsRevisionData } from "websim";
 
 /**
  * Generates a random alphanumeric site ID of given length.
@@ -33,8 +33,8 @@ async function fetchCurrentProjectInfo({
     throw new ProjectRevisionError(msg);
   }
 
-  const proj_data: ProjectData = await resp.json();
-  const parent_version = proj_data.project_revision!.version;
+  const { project_revision }: ProjectData = await resp.json();
+  const parent_version = project_revision!.version;
   console.info(`Current project version: ${parent_version}`);
   return { parent_version };
 }
@@ -45,16 +45,24 @@ async function createNewRevision(
 ) {
   const url_revisions = `${config.base_url}/api/v1/projects/${project_id}/revisions`;
   const payload = { parent_version };
-  // async with session.post(url_revisions, headers=headers, json=payload) as resp:
-  //     if resp.status != 201:
-  //         body = await resp.text()
-  //         msg = f"Failed to create revision: {resp.status}, Response: {body}"
-  //         console.error(msg)
-  //         raise ProjectRevisionError(msg)
-  //     rev_data = await resp.json()
-  //     revision_id = rev_data["project_revision"]["id"]
-  //     revision_version = rev_data["project_revision"]["version"]
-  //     console.info(f"Created revision ID: {revision_id}, Version: {revision_version}")
+
+  const resp = await fetch(url_revisions, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  if (resp.status !== 201) {
+    const body = await resp.text();
+    const msg = `Failed to create revision: {resp.status}, Response: {body}`;
+    console.error(msg);
+    throw new ProjectRevisionError(msg);
+  }
+
+  const { project_revision }: ProjectsRevisionData = await resp.json();
+  const revision_id = project_revision.id;
+  const revision_version = project_revision.version;
+  console.info(`Created revision ID: ${revision_id}, Version: ${revision_version}`);
 }
 
 async function createDraftSite({
@@ -73,7 +81,7 @@ async function createDraftSite({
   // enableDB = "database" in prompt.lower() or "db" in prompt.lower()
 
   // # Construct Final Payload
-  // payload_site = {
+  // payload = {
   //     "generate": {
   //         "prompt": {"type": "plaintext", "text": prompt, "data": None},
   //         "flags": {"use_worker_generation": False},
@@ -105,7 +113,7 @@ async function createDraftSite({
   //     "site_id": site_id,
   // }
 
-  // async with session.post(url_site, headers=headers, json=payload_site) as resp:
+  // async with session.post(url_site, headers=headers, json=payload) as resp:
   //     if resp.status != 201:
   //         body = await resp.text()
   //         msg = f"Failed to create site: {resp.status}, Response: {body}"
@@ -114,8 +122,11 @@ async function createDraftSite({
   //     console.info("Created draft site successfully")
 }
 
-async function confirmDraft() {
-  // url_confirm = f"{config.base_url}/api/v1/projects/{project_id}/revisions/{revision_version}"
+async function confirmDraft(
+  { project_id, headers }: { project_id: string; headers: HeadersInit },
+  { revision_version }: { revision_version: number },
+) {
+  const url_confirm = `${config.base_url}/api/v1/projects/${project_id}/revisions/${revision_version}`;
   // async with session.patch(
   //     url_confirm, headers=headers, json={"draft": False}
   // ) as resp:
@@ -165,9 +176,9 @@ export async function processProjectRevision(
   // # 5) Update project current version
   await updateProjectCurrentVersion();
 
-  // return {
-  //     "revision_id": revision_id,
-  //     "version": revision_version,
-  //     "site_id": site_id,
-  // }
+  return {
+    // "revision_id": revision_id,
+    // "version": revision_version,
+    // "site_id": site_id,
+  };
 }
