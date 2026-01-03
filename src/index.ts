@@ -1,19 +1,18 @@
 import { processProjectRevision } from "./project-revision";
 
-import { refreshCookies, is_jwt_expired } from "./cookie-manager";
+import { refreshCookies, is_jwt_expired, cookie } from "./cookie-manager";
 
 import type { ProjectsRevisionsData, ProjectsCommentsData, WebsimComment } from "websim";
 
 import config from "#config";
 
-// model_id = None
-// additional_note = None
-
 const globalHeaders = { cookie: config.cookie };
 
 // # text to check for and send
-// loc_auto_response_prefix = None
-// loc_auto_response_create_revision = None
+// auto_response_prefix = config.get("auto_response_prefix")
+// loc_auto_response_create_revision = auto_response_prefix + config.get(
+//     "auto_response_create_revision"
+// )
 
 async function refresh_and_update_cookies() {
   const new_cookies = await refreshCookies(config.base_url, globalHeaders.cookie);
@@ -27,24 +26,6 @@ function getHeaders() {
   const headers = { "Content-Type": "application/json", cookie } as const;
   return headers;
 }
-
-// function load_config_items():
-//     global \
-//         model_id, \
-//         additional_note, \
-//     global \
-//         loc_auto_response_prefix, \
-//         loc_auto_response_create_revision, \
-
-//     # Load Config Items
-//     model_id = config.get("model_id", "gpt-5-mini")
-//     additional_note = config.get("additional_note", "")
-
-//     # text to check for and send
-//     loc_auto_response_prefix = config.get("auto_response_prefix")
-//     loc_auto_response_create_revision = loc_auto_response_prefix + config.get(
-//         "auto_response_create_revision"
-//     )
 
 // async function check_comment_has_auto_response(owner_id, comment_id):
 //     url_replies = (
@@ -67,7 +48,7 @@ function getHeaders() {
 
 //         already_replied = any(
 //             r["comment"]["author"]["id"] == owner_id
-//             and loc_auto_response_prefix in r["comment"]["raw_content"]
+//             and auto_response_prefix in r["comment"]["raw_content"]
 //             for r in rep_data["comments"]["data"]
 //         )
 
@@ -187,10 +168,18 @@ async function checkRepliesForExistingAutoResponse(
     return;
   }
 
-  const rep_data = resp_json as ProjectsCommentsData;
+  const { comments } = resp_json as ProjectsCommentsData;
+
+  const already_replied = comments.data.some((r) => {
+    // return (
+    //   // r.comment.author.id === owner_id &&
+    //   //  r.comment.raw_content?.includes(auto_response_prefix)
+    // );
+  });
+
   // already_replied = any(
   //     r["comment"]["author"]["id"] == owner_id
-  //     and loc_auto_response_prefix in r["comment"]["raw_content"]
+  //     and auto_response_prefix in r["comment"]["raw_content"]
   //     for r in rep_data["comments"]["data"]
   // )
 
@@ -216,15 +205,26 @@ async function checkAndRespond(project_id: string) {
     console.info("[Monitor] Creating new revision...");
     const revision = await processProjectRevision(
       project_id,
-      "prompt", // raw_content + additional_note,
-      "model_id", // model_id=model_id,
+      "prompt", // raw_content + config.additional_note,
+      config.model_id,
       globalHeaders.cookie,
     );
-    // console.info(
-    //     f"[Monitor] Revision created: ID={revision['revision_id']}, version={revision['version']}"
-    // )
+
+    console.info(
+      `[Monitor] Revision created: ID=${revision.revision_id}, version=${revision.revision_version}`,
+    );
 
     // Step 5: Post confirmation comment
+
+    // await fetch(url_comments, {
+    //   method: "POST",
+    //   headers: getHeaders(),
+    //   body: JSON.stringify({
+    //     // content: loc_auto_response_create_revision,
+    //     // parent_comment_id: comment_id,
+    //   }),
+    // });
+
     // await session.post(
     //     url_comments,
     //     headers=headers,

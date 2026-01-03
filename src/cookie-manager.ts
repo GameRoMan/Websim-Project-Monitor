@@ -1,3 +1,4 @@
+import config from "#config";
 import { loadConfig, updateConfig } from "./config-manager";
 
 /**
@@ -69,3 +70,19 @@ export function is_jwt_expired(resp_json: unknown): boolean {
   //     and "JWTExpired" in resp_json["error"].get("message", "")
   // )
 }
+
+export const cookie = await (async () => {
+  let cookie = config.cookie;
+
+  return {
+    get() {
+      return cookie;
+    },
+    async refresh() {
+      const new_cookies = await refreshCookies(config.base_url, cookie);
+      if (new_cookies) {
+        cookie = new_cookies;
+      }
+    },
+  };
+})();
