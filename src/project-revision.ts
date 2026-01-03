@@ -66,51 +66,47 @@ async function createNewRevision(
   return { revision_id, revision_version };
 }
 
-async function createDraftSite({
-  project_id,
-  headers,
-}: {
-  project_id: string;
-  headers: HeadersInit;
-}) {
+async function createDraftSite(
+  { project_id, headers }: { project_id: string; headers: HeadersInit },
+  {
+    prompt,
+    model_id,
+    revision_version,
+    revision_id,
+  }: { prompt: string; model_id: string; revision_version: number; revision_id: string },
+) {
   const site_id = generateSiteId();
   console.info(`Generated site ID: ${site_id}`);
   const url_site = `${config.base_url}/api/v1/sites`;
 
   // # Extra Step: Enable optional features
-  // enableMultiplayer = "multiplayer" in prompt.lower()
-  // enableDB = "database" in prompt.lower() or "db" in prompt.lower()
+  const enableMultiplayer = prompt.toLowerCase().includes("multiplayer");
+  const enableDB = prompt.toLowerCase().includes("database") || prompt.toLowerCase().includes("db");
 
   // # Construct Final Payload
   const payload = {
     generate: {
-      //     "prompt": {"type": "plaintext", "text": prompt, "data": None},
-      //     "flags": {"use_worker_generation": False},
-      //     "model": model_id,
-      //     "lore": {
-      //         "version": 1,
-      //         "attachments": [],
-      //         "references": [],
-      //         "enableDatabase": False,
-      //         "enableApi": True,
-      //         "enableMultiplayer": enableMultiplayer,
-      //         "enableMobilePrompt": True,
-      //         "enableDB": enableDB,
-      //         "enableLLM": False,
-      //         "enableLLM2": True,
-      //         "enableTweaks": False,
-      //         "features": {
-      //             "context": True,
-      //             "errors": True,
-      //             "htmx": True,
-      //             "images": True,
-      //             "navigation": True,
-      //         },
-      //     },
+      prompt: { type: "plaintext", text: prompt },
+      flags: { use_worker_generation: false },
+      model: model_id,
+      lore: {
+        version: 1,
+        attachments: [],
+        references: [],
+        enableDatabase: false,
+        enableApi: true,
+        enableMultiplayer,
+        enableMobilePrompt: true,
+        enableDB,
+        enableLLM: false,
+        enableLLM2: true,
+        enableTweaks: false,
+        features: { context: true, errors: true, htmx: true, images: true, navigation: true },
+      },
     },
     project_id,
-    // "project_version": revision_version,
-    // "project_revision_id": revision_id,
+    project_version: revision_version,
+    project_revision_id: revision_id,
     site_id,
   };
 
@@ -197,7 +193,10 @@ export async function processProjectRevision(
   );
 
   // # 3) Create draft site
-  const { site_id } = await createDraftSite({ project_id, headers });
+  const { site_id } = await createDraftSite(
+    { project_id, headers },
+    { prompt, model_id, revision_version, revision_id },
+  );
 
   // # 4) Confirm draft
   await confirmDraft({ project_id, headers }, { revision_version });
