@@ -6,7 +6,7 @@
     "#config": "./config.json"
   },
   "scripts": {
-    "format": "oxfmt --list-different || oxfmt",
+    "format": "oxfmt --list-different && echo 'All files are already formatted' || oxfmt",
     "start": "bun --bun ./src/index"
   },
   "dependencies": {

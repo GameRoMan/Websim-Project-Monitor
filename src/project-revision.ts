@@ -83,35 +83,35 @@ async function createDraftSite({
 
   // # Construct Final Payload
   const payload = {
-    // "generate": {
-    //     "prompt": {"type": "plaintext", "text": prompt, "data": None},
-    //     "flags": {"use_worker_generation": False},
-    //     "model": model_id,
-    //     "lore": {
-    //         "version": 1,
-    //         "attachments": [],
-    //         "references": [],
-    //         "enableDatabase": False,
-    //         "enableApi": True,
-    //         "enableMultiplayer": enableMultiplayer,
-    //         "enableMobilePrompt": True,
-    //         "enableDB": enableDB,
-    //         "enableLLM": False,
-    //         "enableLLM2": True,
-    //         "enableTweaks": False,
-    //         "features": {
-    //             "context": True,
-    //             "errors": True,
-    //             "htmx": True,
-    //             "images": True,
-    //             "navigation": True,
-    //         },
-    //     },
-    // },
-    // "project_id": project_id,
+    generate: {
+      //     "prompt": {"type": "plaintext", "text": prompt, "data": None},
+      //     "flags": {"use_worker_generation": False},
+      //     "model": model_id,
+      //     "lore": {
+      //         "version": 1,
+      //         "attachments": [],
+      //         "references": [],
+      //         "enableDatabase": False,
+      //         "enableApi": True,
+      //         "enableMultiplayer": enableMultiplayer,
+      //         "enableMobilePrompt": True,
+      //         "enableDB": enableDB,
+      //         "enableLLM": False,
+      //         "enableLLM2": True,
+      //         "enableTweaks": False,
+      //         "features": {
+      //             "context": True,
+      //             "errors": True,
+      //             "htmx": True,
+      //             "images": True,
+      //             "navigation": True,
+      //         },
+      //     },
+    },
+    project_id,
     // "project_version": revision_version,
     // "project_revision_id": revision_id,
-    // "site_id": site_id,
+    site_id,
   };
 
   const resp = await fetch(url_site, {
@@ -144,20 +144,30 @@ async function confirmDraft(
     body: JSON.stringify(payload),
   });
 
-  // if resp.status != 200:
-  //     body = await resp.text()
-  //     msg = f"Failed to confirm draft: {resp.status}, Response: {body}"
-  //     console.error(msg)
-  //     raise ProjectRevisionError(msg)
+  if (resp.status !== 200) {
+    const body = await resp.text();
+    const msg = `Failed to confirm draft: ${resp.status}, Response: ${body}`;
+    console.error(msg);
+    throw new ProjectRevisionError(msg);
+  }
 
   console.info("Confirmed draft successfully");
 }
 
-async function updateProjectCurrentVersion() {
-  // url_update = f"{config.base_url}/api/v1/projects/{project_id}"
-  // async with session.patch(
-  //     url_update, headers=headers, json={"current_version": revision_version}
-  // ) as resp:
+async function updateProjectCurrentVersion(
+  { project_id, headers }: { project_id: string; headers: HeadersInit },
+  { revision_version }: { revision_version: number },
+) {
+  const url_update = `${config.base_url}/api/v1/projects/${project_id}`;
+
+  const payload = { current_version: revision_version };
+
+  const resp = await fetch(url_update, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
   //     if resp.status != 200:
   //         body = await resp.text()
   //         msg = (
@@ -192,7 +202,7 @@ export async function processProjectRevision(
   await confirmDraft({ project_id, headers }, { revision_version });
 
   // # 5) Update project current version
-  await updateProjectCurrentVersion();
+  await updateProjectCurrentVersion({ project_id, headers }, { revision_version });
 
   return { revision_id, revision_version, site_id } as const;
 }
