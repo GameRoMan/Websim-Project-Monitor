@@ -1,5 +1,6 @@
 import config from "#config";
 import type { ProjectData, ProjectsRevisionData } from "websim";
+import { cookie } from "./cookie-manager";
 
 /**
  * Generates a random alphanumeric site ID of given length.
@@ -179,9 +180,8 @@ export async function processProjectRevision(
   project_id: string,
   prompt: string,
   model_id: string = "gemini-flash",
-  cookie: string,
 ) {
-  const headers = { "Content-Type": "application/json", cookie } as const;
+  const headers = { "Content-Type": "application/json", cookie: cookie.get() } as const;
 
   // # 1) Fetch current project info
   const { parent_version } = await fetchCurrentProjectInfo({ project_id, headers });

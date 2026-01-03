@@ -7,8 +7,7 @@ import type { ProjectsRevisionsData, ProjectsCommentsData, WebsimComment } from 
 import config from "#config";
 
 // # text to check for and send
-// auto_response_prefix = config.get("auto_response_prefix")
-// loc_auto_response_create_revision = auto_response_prefix + config.get(
+// loc_auto_response_create_revision = config.auto_response_prefix + config.get(
 //     "auto_response_create_revision"
 // )
 
@@ -38,7 +37,7 @@ function getHeaders() {
 
 //         already_replied = any(
 //             r["comment"]["author"]["id"] == owner_id
-//             and auto_response_prefix in r["comment"]["raw_content"]
+//             and config.auto_response_prefix in r["comment"]["raw_content"]
 //             for r in rep_data["comments"]["data"]
 //         )
 
@@ -80,7 +79,8 @@ async function fetchLatestRevisions(project_id: string) {
     return;
   }
 
-  // const owner_id = first.project_revision.created_by.id;
+  const owner_id = first.project_revision.created_by.id;
+  return { owner_id };
 }
 
 async function fetchComments(project_id: string) {
@@ -139,11 +139,13 @@ async function fetchComments(project_id: string) {
   }
 
   console.info(`[Monitor] First comment by ${author.username}: "${raw_content}"`);
+
+  return { comment_id };
 }
 
 async function checkRepliesForExistingAutoResponse(
   project_id: string,
-  { comment_id }: { comment_id: string },
+  { comment_id, owner_id }: { comment_id: string; owner_id: string },
 ) {
   const url_replies = `${config.base_url}/api/v1/projects/${project_id}/comments/${comment_id}/replies`;
   const resp = await fetch(url_replies, { headers: getHeaders() });
@@ -160,22 +162,18 @@ async function checkRepliesForExistingAutoResponse(
 
   const { comments } = resp_json as ProjectsCommentsData;
 
-  const already_replied = comments.data.some((r) => {
-    // return (
-    //   // r.comment.author.id === owner_id &&
-    //   //  r.comment.raw_content?.includes(auto_response_prefix)
-    // );
+  const already_replied = comments.data.some(({ comment }) => {
+    return (
+      comment.author.id === owner_id && comment.raw_content?.includes(config.auto_response_prefix)
+    );
   });
 
-  // already_replied = any(
-  //     r["comment"]["author"]["id"] == owner_id
-  //     and auto_response_prefix in r["comment"]["raw_content"]
-  //     for r in rep_data["comments"]["data"]
-  // )
+  if (already_replied) {
+    console.info("[Monitor] Found auto reply headers. Skipping.");
+    return;
+  }
 
-  // if already_replied:
-  //     console.info("[Monitor] Found auto reply headers. Skipping.")
-  //     return
+  return { success: true };
 }
 
 async function checkAndRespond(project_id: string) {
@@ -183,13 +181,17 @@ async function checkAndRespond(project_id: string) {
     console.info(`[Monitor] Checking project ${project_id}`);
 
     // Step 1: Fetch latest revisions
-    await fetchLatestRevisions(project_id);
+    const latestRevisions = await fetchLatestRevisions(project_id);
+    if (!latestRevisions) return;
+    const { owner_id } = latestRevisions;
 
     // Step 2: Fetch comments
-    await fetchComments(project_id);
+    const comments = await fetchComments(project_id);
+    if (!comments) return;
+    const { comment_id } = comments;
 
     // Step 3: Check replies for existing auto response
-    await checkRepliesForExistingAutoResponse(project_id);
+    await checkRepliesForExistingAutoResponse(project_id, { comment_id });
 
     // Step 4: Create new revision with safety note
     console.info("[Monitor] Creating new revision...");
@@ -197,7 +199,6 @@ async function checkAndRespond(project_id: string) {
       project_id,
       "prompt", // raw_content + config.additional_note,
       config.model_id,
-      cookie.get(),
     );
 
     console.info(

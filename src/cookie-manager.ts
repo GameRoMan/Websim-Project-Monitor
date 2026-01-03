@@ -57,13 +57,13 @@ export function is_jwt_expired(resp_json: unknown): boolean {
   if (!("name" in resp_json.error)) return false;
   if (resp_json.error.name !== "ResponseError") return false;
 
-  return true;
-
   // return (
   //   resp_json["error"].get("cause", {}).get("message", "") == "JWT expired"
   // ) or (
   //   "JWTExpired" in resp_json["error"].get("message", "")
   // )
+
+  return true;
 }
 
 export const cookie = await (async () => {
