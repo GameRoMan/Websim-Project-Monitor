@@ -1,3 +1,5 @@
+import config from "#config";
+
 /**
  * Generates a random alphanumeric site ID of given length.
  */
@@ -65,15 +67,14 @@ async function createDraftSite() {
 
 export async function processProjectRevision(
   project_id: string,
-  // prompt: string,
-  // model_id: string = "gemini-flash",
-  // base_url: string = "https://websim.com",
-  // cookies: dict[string, string] | None = None,
+  prompt: string,
+  model_id: string = "gemini-flash",
+  cookies: string,
 ) {
   const headers = { "Content-Type": "application/json" } as const;
 
   // # 1) Fetch current project info
-  // url_proj = f"{base_url}/api/v1/projects/{project_id}"
+  // url_proj = f"{config.base_url}/api/v1/projects/{project_id}"
   // async with session.get(url_proj, headers=headers) as resp:
   //     if resp.status != 200:
   //         body = await resp.text()
@@ -85,7 +86,7 @@ export async function processProjectRevision(
   //     console.info(f"Current project version: {parent_version}")
 
   // # 2) Create new revision
-  // url_rev = f"{base_url}/api/v1/projects/{project_id}/revisions"
+  // url_rev = f"{config.base_url}/api/v1/projects/{project_id}/revisions"
   // payload_rev = {"parent_version": parent_version}
 
   // async with session.post(url_rev, headers=headers, json=payload_rev) as resp:
@@ -105,7 +106,7 @@ export async function processProjectRevision(
   createDraftSite();
 
   // # 4) Confirm draft
-  // url_confirm = f"{base_url}/api/v1/projects/{project_id}/revisions/{rev_version}"
+  // url_confirm = f"{config.base_url}/api/v1/projects/{project_id}/revisions/{rev_version}"
   // async with session.patch(
   //     url_confirm, headers=headers, json={"draft": False}
   // ) as resp:
@@ -117,7 +118,7 @@ export async function processProjectRevision(
   //     console.info("Confirmed draft successfully")
 
   // # 5) Update project current version
-  // url_update = f"{base_url}/api/v1/projects/{project_id}"
+  // url_update = f"{config.base_url}/api/v1/projects/{project_id}"
   // async with session.patch(
   //     url_update, headers=headers, json={"current_version": rev_version}
   // ) as resp:

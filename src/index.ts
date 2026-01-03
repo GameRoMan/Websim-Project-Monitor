@@ -11,11 +11,6 @@ import config from "#config";
 
 const globalHeaders = { cookie: config.cookie };
 
-// # Additional Items
-// require_like_project = None
-// require_tip_credit = None
-// minimum_tip_amount = None
-
 // # text to check for and send
 // loc_auto_response_prefix = None
 // loc_auto_response_create_revision = None
@@ -37,9 +32,6 @@ function getHeaders() {
 //     global \
 //         model_id, \
 //         additional_note, \
-//         require_like_project, \
-//         require_tip_credit, \
-//         minimum_tip_amount
 //     global \
 //         loc_auto_response_prefix, \
 //         loc_auto_response_create_revision, \
@@ -47,12 +39,6 @@ function getHeaders() {
 //     # Load Config Items
 //     model_id = config.get("model_id", "gpt-5-mini")
 //     additional_note = config.get("additional_note", "")
-
-//     # Additional Items
-//     require_like_project = config.get("require_like_project", False)
-//     require_tip_credit = config.get("require_tip_credit", False)
-//     print(type(require_tip_credit))
-//     minimum_tip_amount = config.get("minimum_tip_amount", 0)
 
 //     # text to check for and send
 //     loc_auto_response_prefix = config.get("auto_response_prefix")
@@ -228,13 +214,12 @@ async function checkAndRespond(project_id: string) {
 
     // Step 4: Create new revision with safety note
     console.info("[Monitor] Creating new revision...");
-    // revision = await processProjectRevision(
-    //     project_id,
-    //     raw_content + additional_note,
-    //     model_id=model_id,
-    //     base_url=base_url,
-    //     cookies=cookies,
-    // )
+    const revision = await processProjectRevision(
+      project_id,
+      "prompt", // raw_content + additional_note,
+      "model_id", // model_id=model_id,
+      globalHeaders.cookie,
+    );
     // console.info(
     //     f"[Monitor] Revision created: ID={revision['revision_id']}, version={revision['version']}"
     // )
