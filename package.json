@@ -6,7 +6,7 @@
     "#config": "./config.json"
   },
   "scripts": {
-    "format": "bunx oxfmt --list-different || bunx oxfmt",
+    "format": "oxfmt --list-different || oxfmt",
     "start": "bun --bun ./src/index"
   },
   "dependencies": {

@@ -54,7 +54,7 @@ async function createNewRevision(
 
   if (resp.status !== 201) {
     const body = await resp.text();
-    const msg = `Failed to create revision: {resp.status}, Response: {body}`;
+    const msg = `Failed to create revision: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
@@ -63,6 +63,7 @@ async function createNewRevision(
   const revision_id = project_revision.id;
   const revision_version = project_revision.version;
   console.info(`Created revision ID: ${revision_id}, Version: ${revision_version}`);
+  return { revision_id, revision_version };
 }
 
 async function createDraftSite({
@@ -81,45 +82,52 @@ async function createDraftSite({
   // enableDB = "database" in prompt.lower() or "db" in prompt.lower()
 
   // # Construct Final Payload
-  // payload = {
-  //     "generate": {
-  //         "prompt": {"type": "plaintext", "text": prompt, "data": None},
-  //         "flags": {"use_worker_generation": False},
-  //         "model": model_id,
-  //         "lore": {
-  //             "version": 1,
-  //             "attachments": [],
-  //             "references": [],
-  //             "enableDatabase": False,
-  //             "enableApi": True,
-  //             "enableMultiplayer": enableMultiplayer,
-  //             "enableMobilePrompt": True,
-  //             "enableDB": enableDB,
-  //             "enableLLM": False,
-  //             "enableLLM2": True,
-  //             "enableTweaks": False,
-  //             "features": {
-  //                 "context": True,
-  //                 "errors": True,
-  //                 "htmx": True,
-  //                 "images": True,
-  //                 "navigation": True,
-  //             },
-  //         },
-  //     },
-  //     "project_id": project_id,
-  //     "project_version": revision_version,
-  //     "project_revision_id": revision_id,
-  //     "site_id": site_id,
-  // }
+  const payload = {
+    // "generate": {
+    //     "prompt": {"type": "plaintext", "text": prompt, "data": None},
+    //     "flags": {"use_worker_generation": False},
+    //     "model": model_id,
+    //     "lore": {
+    //         "version": 1,
+    //         "attachments": [],
+    //         "references": [],
+    //         "enableDatabase": False,
+    //         "enableApi": True,
+    //         "enableMultiplayer": enableMultiplayer,
+    //         "enableMobilePrompt": True,
+    //         "enableDB": enableDB,
+    //         "enableLLM": False,
+    //         "enableLLM2": True,
+    //         "enableTweaks": False,
+    //         "features": {
+    //             "context": True,
+    //             "errors": True,
+    //             "htmx": True,
+    //             "images": True,
+    //             "navigation": True,
+    //         },
+    //     },
+    // },
+    // "project_id": project_id,
+    // "project_version": revision_version,
+    // "project_revision_id": revision_id,
+    // "site_id": site_id,
+  };
 
-  // async with session.post(url_site, headers=headers, json=payload) as resp:
-  //     if resp.status != 201:
-  //         body = await resp.text()
-  //         msg = f"Failed to create site: {resp.status}, Response: {body}"
-  //         console.error(msg)
-  //         raise ProjectRevisionError(msg)
-  //     console.info("Created draft site successfully")
+  const resp = await fetch(url_site, {
+    method: "POST",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  // if resp.status != 201:
+  //     body = await resp.text()
+  //     msg = f"Failed to create site: {resp.status}, Response: {body}"
+  //     console.error(msg)
+  //     raise ProjectRevisionError(msg)
+
+  console.info("Created draft site successfully");
+  return { site_id };
 }
 
 async function confirmDraft(
@@ -127,15 +135,22 @@ async function confirmDraft(
   { revision_version }: { revision_version: number },
 ) {
   const url_confirm = `${config.base_url}/api/v1/projects/${project_id}/revisions/${revision_version}`;
-  // async with session.patch(
-  //     url_confirm, headers=headers, json={"draft": False}
-  // ) as resp:
-  //     if resp.status != 200:
-  //         body = await resp.text()
-  //         msg = f"Failed to confirm draft: {resp.status}, Response: {body}"
-  //         console.error(msg)
-  //         raise ProjectRevisionError(msg)
-  //     console.info("Confirmed draft successfully")
+
+  const payload = { draft: false };
+
+  const resp = await fetch(url_confirm, {
+    method: "PATCH",
+    headers,
+    body: JSON.stringify(payload),
+  });
+
+  // if resp.status != 200:
+  //     body = await resp.text()
+  //     msg = f"Failed to confirm draft: {resp.status}, Response: {body}"
+  //     console.error(msg)
+  //     raise ProjectRevisionError(msg)
+
+  console.info("Confirmed draft successfully");
 }
 
 async function updateProjectCurrentVersion() {
@@ -165,20 +180,19 @@ export async function processProjectRevision(
   const { parent_version } = await fetchCurrentProjectInfo({ project_id, headers });
 
   // # 2) Create new revision
-  await createNewRevision({ project_id, headers }, { parent_version });
+  const { revision_id, revision_version } = await createNewRevision(
+    { project_id, headers },
+    { parent_version },
+  );
 
   // # 3) Create draft site
-  await createDraftSite({ project_id, headers });
+  const { site_id } = await createDraftSite({ project_id, headers });
 
   // # 4) Confirm draft
-  await confirmDraft();
+  await confirmDraft({ project_id, headers }, { revision_version });
 
   // # 5) Update project current version
   await updateProjectCurrentVersion();
 
-  return {
-    // "revision_id": revision_id,
-    // "version": revision_version,
-    // "site_id": site_id,
-  };
+  return { revision_id, revision_version, site_id } as const;
 }
