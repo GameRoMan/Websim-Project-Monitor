@@ -6,11 +6,6 @@ import type { ProjectsRevisionsData, ProjectsCommentsData, WebsimComment } from 
 
 import config from "#config";
 
-// # text to check for and send
-// loc_auto_response_create_revision = config.auto_response_prefix + config.get(
-//     "auto_response_create_revision"
-// )
-
 function getHeaders() {
   const headers = { "Content-Type": "application/json", cookie: cookie.get() } as const;
   return headers;
@@ -88,8 +83,6 @@ async function fetchComments(project_id: string) {
   const url_comments = `${config.base_url}/api/v1/projects/${project_id}/comments`;
   const resp = await fetch(url_comments, { headers });
 
-  let tipped_amount: number | null = null;
-
   const resp_json: unknown = await resp.json();
 
   if (is_jwt_expired(resp_json)) {
@@ -118,7 +111,7 @@ async function fetchComments(project_id: string) {
     if (c.pinned) continue;
 
     // last comment before replied
-    // if (await check_comment_has_auto_response(owner_id, comment["id"])) {
+    // if (await check_comment_has_auto_response(owner_id, comment.id)) {
     //    break
     // }
 
@@ -134,13 +127,9 @@ async function fetchComments(project_id: string) {
   const raw_content = comment.raw_content;
   const author = comment.author;
 
-  if (comment.card_data && comment.card_data.type === "tip_comment") {
-    tipped_amount = comment.card_data.credits_spent;
-  }
-
   console.info(`[Monitor] First comment by ${author.username}: "${raw_content}"`);
 
-  return { comment_id };
+  return { comment_id, raw_content };
 }
 
 async function checkRepliesForExistingAutoResponse(
@@ -188,16 +177,17 @@ async function checkAndRespond(project_id: string) {
     // Step 2: Fetch comments
     const comments = await fetchComments(project_id);
     if (!comments) return;
-    const { comment_id } = comments;
+    const { comment_id, raw_content } = comments;
 
     // Step 3: Check replies for existing auto response
-    await checkRepliesForExistingAutoResponse(project_id, { comment_id });
+    const success = await checkRepliesForExistingAutoResponse(project_id, { comment_id, owner_id });
+    if (!success) return;
 
     // Step 4: Create new revision with safety note
     console.info("[Monitor] Creating new revision...");
     const revision = await processProjectRevision(
       project_id,
-      "prompt", // raw_content + config.additional_note,
+      `${raw_content}${config.additional_note}`,
       config.model_id,
     );
 
@@ -207,23 +197,16 @@ async function checkAndRespond(project_id: string) {
 
     // Step 5: Post confirmation comment
 
-    // await fetch(url_comments, {
-    //   method: "POST",
-    //   headers: getHeaders(),
-    //   body: JSON.stringify({
-    //     // content: loc_auto_response_create_revision,
-    //     // parent_comment_id: comment_id,
-    //   }),
-    // });
+    const url_comments = `${config.base_url}/api/v1/projects/${project_id}/comments`;
+    await fetch(url_comments, {
+      method: "POST",
+      headers: getHeaders(),
+      body: JSON.stringify({
+        content: `${config.auto_response_prefix}${config.auto_response_create_revision}`,
+        parent_comment_id: comment_id,
+      }),
+    });
 
-    // await session.post(
-    //     url_comments,
-    //     headers=headers,
-    //     json={
-    //         "content": loc_auto_response_create_revision,
-    //         "parent_comment_id": comment_id,
-    //     },
-    // )
     console.info("[Monitor] Confirmation comment posted.");
   } catch (e) {
     console.error(`[Monitor] Error: ${e}`);
