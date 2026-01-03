@@ -15,17 +15,20 @@ class ProjectRevisionError extends Error {
   override readonly name = "ProjectRevisionError";
 }
 
-async function fetchCurrentProjectInfo(project_id: string) {
-  // url_proj = f"{config.base_url}/api/v1/projects/{project_id}"
-  // async with session.get(url_proj, headers=headers) as resp:
-  //     if resp.status != 200:
-  //         body = await resp.text()
-  //         msg = f"Failed to fetch project info: {resp.status}, Response: {body}"
-  //         console.error(msg)
-  //         raise ProjectRevisionError(msg)
-  //     proj_data = await resp.json()
-  //     parent_version = proj_data["project_revision"]["version"]
-  //     console.info(f"Current project version: {parent_version}")
+async function fetchCurrentProjectInfo(project_id: string, headers: HeadersInit) {
+  const url_proj = `${config.base_url}/api/v1/projects/${project_id}`;
+  const resp = await fetch(url_proj, { headers });
+
+  if (resp.status !== 200) {
+    const body = await resp.text();
+    const msg = `Failed to fetch project info: ${resp.status}, Response: ${body}`;
+    console.error(msg);
+    throw new ProjectRevisionError(msg);
+  }
+
+  // proj_data = await resp.json()
+  // parent_version = proj_data["project_revision"]["version"]
+  // console.info(f"Current project version: {parent_version}")
 }
 
 async function createNewRevision() {
@@ -38,8 +41,6 @@ async function createNewRevision() {
   //         console.error(msg)
   //         raise ProjectRevisionError(msg)
   //     rev_data = await resp.json()
-  //     # pprint.pp(rev_data,depth=3)
-  //     # pprint.pp(dict(resp.headers),depth=3)
   //     rev_id = rev_data["project_revision"]["id"]
   //     rev_version = rev_data["project_revision"]["version"]
   //     console.info(f"Created revision ID: {rev_id}, Version: {rev_version}")
@@ -128,24 +129,24 @@ export async function processProjectRevision(
   project_id: string,
   prompt: string,
   model_id: string = "gemini-flash",
-  cookies: string,
+  cookie: string,
 ) {
-  const headers = { "Content-Type": "application/json" } as const;
+  const headers = { "Content-Type": "application/json", cookie } as const;
 
   // # 1) Fetch current project info
-  fetchCurrentProjectInfo(project_id);
+  await fetchCurrentProjectInfo(project_id, headers);
 
   // # 2) Create new revision
-  createNewRevision();
+  await createNewRevision();
 
   // # 3) Create draft site
-  createDraftSite();
+  await createDraftSite();
 
   // # 4) Confirm draft
-  confirmDraft();
+  await confirmDraft();
 
   // # 5) Update project current version
-  updateProjectCurrentVersion();
+  await updateProjectCurrentVersion();
 
   // return {
   //     "revision_id": rev_id,
