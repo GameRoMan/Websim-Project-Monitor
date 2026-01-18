@@ -13,7 +13,7 @@
     "websim": "^0.0.11"
   },
   "devDependencies": {
-    "@types/bun": "^1.3.5",
-    "oxfmt": "^0.21.0"
+    "@types/bun": "^1.3.6",
+    "oxfmt": "^0.24.0"
   }
 }
