@@ -29,14 +29,14 @@ async function fetchCurrentProjectInfo({
 
   if (resp.status !== 200) {
     const body = await resp.text();
-    const msg = `Failed to fetch project info: ${resp.status}, Response: ${body}`;
+    const msg = `[ProjectRevision] Failed to fetch project info: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
 
   const { project_revision }: ProjectData = await resp.json();
   const parent_version = project_revision!.version;
-  console.info(`Current project version: ${parent_version}`);
+  console.info(`[ProjectRevision] Current project version: ${parent_version}`);
   return { parent_version };
 }
 
@@ -55,7 +55,7 @@ async function createNewRevision(
 
   if (resp.status !== 201) {
     const body = await resp.text();
-    const msg = `Failed to create revision: ${resp.status}, Response: ${body}`;
+    const msg = `[ProjectRevision] Failed to create revision: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
@@ -63,7 +63,9 @@ async function createNewRevision(
   const { project_revision }: ProjectsRevisionData = await resp.json();
   const revision_id = project_revision.id;
   const revision_version = project_revision.version;
-  console.info(`Created revision ID: ${revision_id}, Version: ${revision_version}`);
+  console.info(
+    `[ProjectRevision] Created revision ID: ${revision_id}, Version: ${revision_version}`,
+  );
   return { revision_id, revision_version };
 }
 
@@ -77,7 +79,7 @@ async function createDraftSite(
   }: { prompt: string; model_id: string; revision_version: number; revision_id: string },
 ) {
   const site_id = generateSiteId();
-  console.info(`Generated site ID: ${site_id}`);
+  console.info(`[ProjectRevision] Generated site ID: ${site_id}`);
   const url_site = `${config.base_url}/api/v1/sites`;
 
   // # Extra Step: Enable optional features
@@ -119,12 +121,12 @@ async function createDraftSite(
 
   if (resp.status !== 201) {
     const body = await resp.text();
-    const msg = `Failed to create site: ${resp.status}, Response: ${body}`;
+    const msg = `[ProjectRevision] Failed to create site: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
 
-  console.info("Created draft site successfully");
+  console.info("[ProjectRevision] Created draft site successfully");
   return { site_id };
 }
 
@@ -144,12 +146,12 @@ async function confirmDraft(
 
   if (resp.status !== 200) {
     const body = await resp.text();
-    const msg = `Failed to confirm draft: ${resp.status}, Response: ${body}`;
+    const msg = `[ProjectRevision] Failed to confirm draft: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
 
-  console.info("Confirmed draft successfully");
+  console.info("[ProjectRevision] Confirmed draft successfully");
 }
 
 async function updateProjectCurrentVersion(
@@ -168,12 +170,12 @@ async function updateProjectCurrentVersion(
 
   if (resp.status !== 200) {
     const body = await resp.text();
-    const msg = `Failed to update current version: ${resp.status}, Response: ${body}`;
+    const msg = `[ProjectRevision] Failed to update current version: ${resp.status}, Response: ${body}`;
     console.error(msg);
     throw new ProjectRevisionError(msg);
   }
 
-  console.info(`Updated project current version to: ${revision_version}`);
+  console.info(`[ProjectRevision] Updated project current version to: ${revision_version}`);
 }
 
 export async function processProjectRevision(project_id: string, prompt: string, model_id: string) {
